@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phonics Ph & Wh Game</title>
+
+<style>
+body{
+  font-family: 'Comic Sans MS', cursive;
+  background: linear-gradient(#a8e6ff, #ffffff);
+  text-align:center;
+  margin:0;
+}
+
+h1{ color:#ff6b6b; }
+
+.game-box{
+  background:white;
+  border-radius:20px;
+  padding:20px;
+  margin:20px auto;
+  width:90%;
+  max-width:600px;
+  box-shadow:0 8px 20px rgba(0,0,0,0.2);
+}
+
+img{ width:200px; height:200px; }
+
+button{
+  padding:10px 20px;
+  border:none;
+  border-radius:10px;
+  font-size:18px;
+  margin:5px;
+  cursor:pointer;
+}
+
+.primary{ background:#4ecdc4; color:white;}
+.keyboard button{ margin:3px; width:40px; height:40px; }
+
+.hearts{ font-size:25px; color:red; }
+
+.hidden{ display:none; }
+</style>
+</head>
+
+<body>
+
+<h1>🎯 Phonics Game: PH & WH</h1>
+
+<div class="game-box" id="game">
+
+<h2>Round 1: Look, Say, Spell</h2>
+
+<img id="image" src="">
+<h2 id="wordDisplay">_ _ _ _</h2>
+
+<div id="hearts" class="hearts hidden"></div>
+
+<p id="feedback"></p>
+
+<button class="primary" onclick="startListening()">🎤 Say Word</button>
+<button onclick="playSound()">🔊 Hear Word</button>
+
+<div id="keyboard" class="keyboard hidden"></div>
+
+<p>⭐ Score: <span id="score">0</span> / 12</p>
+
+</div>
+
+<div id="endScreen" class="game-box hidden">
+<h2>🎉 Congratulations! 🎉</h2>
+<p>You got 12 points!</p>
+<button onclick="restartGame()">Play Again</button>
+</div>
+
+<script>
+
+// WORDS
+const words = [
+{word:"photo", img:"https://i.postimg.cc/631KgZrY/photo.png"},
+{word:"phone", img:"https://i.postimg.cc/nL2pKgCm/phone.png"},
+{word:"dolphin", img:"https://i.postimg.cc/QtnDw7gd/dolphin.png"},
+{word:"white", img:"https://i.postimg.cc/265m0GZ2/white.png"},
+{word:"whale", img:"https://i.postimg.cc/25GrdMVh/whale.png"},
+{word:"wheel", img:"https://i.postimg.cc/vBmM0hVc/wheel.png"}
+];
+
+let current = 0;
+let score = 0;
+let lives = 5;
+let guessed = [];
+let speakingPassed = false;
+
+// LOAD WORD
+function loadWord(){
+  let w = words[current];
+
+  document.getElementById("image").src = w.img;
+
+  guessed = [];
+  lives = 5;
+  speakingPassed = false;
+
+  document.getElementById("keyboard").classList.add("hidden");
+  document.getElementById("hearts").classList.add("hidden");
+
+  updateHearts();
+  updateWord();
+}
+
+// HEARTS
+function updateHearts(){
+  document.getElementById("hearts").innerHTML = "❤️".repeat(lives);
+}
+
+// WORD DISPLAY
+function updateWord(){
+  let w = words[current].word;
+  let display = "";
+
+  for(let l of w){
+    display += guessed.includes(l) ? l + " " : "_ ";
+  }
+
+  document.getElementById("wordDisplay").innerText = display;
+}
+
+// KEYBOARD
+function createKeyboard(){
+  let kb = document.getElementById("keyboard");
+  kb.innerHTML = "";
+  let letters = "abcdefghijklmnopqrstuvwxyz";
+
+  for(let l of letters){
+    let btn = document.createElement("button");
+    btn.innerText = l;
+    btn.onclick = ()=>guessLetter(l, btn);
+    kb.appendChild(btn);
+  }
+}
+
+// GUESS LETTER
+function guessLetter(letter, btn){
+
+  if(!speakingPassed){
+    alert("🎤 Say the word first!");
+    return;
+  }
+
+  btn.disabled = true;
+  btn.style.background="#ccc";
+
+  let w = words[current].word;
+
+  if(w.includes(letter)){
+    guessed.push(letter);
+    updateWord();
+    checkWin();
+  }else{
+    lives--;
+    updateHearts();
+    playWrongSound();
+
+    if(lives==0){
+      alert("Try again!");
+      loadWord();
+    }
+  }
+}
+
+// CHECK SPELL WIN
+function checkWin(){
+  let w = words[current].word;
+  let done = w.split('').every(l=>guessed.includes(l));
+
+  if(done){
+    score++;
+    nextWord();
+  }
+}
+
+// NEXT WORD
+function nextWord(){
+  current++;
+  document.getElementById("score").innerText = score;
+
+  if(current >= words.length){
+    if(score == 12){
+      document.getElementById("game").classList.add("hidden");
+      document.getElementById("endScreen").classList.remove("hidden");
+    }
+    return;
+  }
+
+  loadWord();
+}
+
+// SPEECH
+function startListening(){
+  let recognition = new(window.SpeechRecognition || window.webkitSpeechRecognition)();
+  recognition.lang = 'en-US';
+
+  recognition.onresult = function(event){
+    let spoken = event.results[0][0].transcript.toLowerCase();
+    let correct = words[current].word;
+
+    if(spoken.includes(correct)){
+      giveFeedback("best");
+
+      score++;
+      document.getElementById("score").innerText = score;
+
+      speakingPassed = true;
+      document.getElementById("keyboard").classList.remove("hidden");
+      document.getElementById("hearts").classList.remove("hidden");
+      createKeyboard();
+
+    }else{
+      giveFeedback("try");
+    }
+  };
+
+  recognition.start();
+}
+
+// FEEDBACK
+function giveFeedback(type){
+  let msg = "";
+
+  if(type=="best") msg="🌟 BEST!";
+  else msg="❌ Try Again";
+
+  document.getElementById("feedback").innerText = msg;
+}
+
+// SOUND
+function playSound(){
+  let utter = new SpeechSynthesisUtterance(words[current].word);
+  utter.lang = "en-US";
+  speechSynthesis.speak(utter);
+}
+
+// WRONG SOUND
+function playWrongSound(){
+  let audio = new Audio("https://www.soundjay.com/button/beep-07.wav");
+  audio.play();
+}
+
+// RESTART
+function restartGame(){
+  location.reload();
+}
+
+// START
+loadWord();
+
+</script>
+
+</body>
+</html>
